@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<title>Nexora AI Login</title>
+
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.7/dist/css/bootstrap.min.css" rel="stylesheet">
+
+<link rel="stylesheet" href="{{ url_for('static', filename='css/login.css') }}">
+
+</head>
+
+<body>
+
+<div class="login-box">
+
+<h1>NEXORA AI</h1>
+
+<p>AI Powered Social Media Automation</p>
+
+<form action="/dashboard">
+
+<input
+type="email"
+class="form-control mb-3"
+placeholder="Email">
+
+<input
+type="password"
+class="form-control mb-4"
+placeholder="Password">
+
+<button
+class="btn btn-info w-100">
+
+Login
+
+</button>
+
+</form>
+
+</div>
+
+</body>
+</html>

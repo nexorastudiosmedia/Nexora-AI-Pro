@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <title>Facebook Pages | Nexora AI</title>
+
+    <link rel="stylesheet"
+          href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+
+</head>
+
+<body class="bg-dark text-light">
+
+<div class="container py-5">
+
+    <div class="d-flex justify-content-between align-items-center mb-4">
+
+        <h2>📘 Facebook Pages Manager</h2>
+
+        <a href="/dashboard" class="btn btn-secondary">
+            Dashboard
+        </a>
+
+    </div>
+
+    <div class="card bg-secondary mb-4">
+
+        <div class="card-body">
+
+            <form action="/facebook/add" method="POST">
+
+                <div class="row">
+
+                    <div class="col-md-6 mb-3">
+
+                        <label class="form-label">
+                            Page Name
+                        </label>
+
+                        <input
+                            type="text"
+                            name="page_name"
+                            class="form-control"
+                            required>
+
+                    </div>
+
+                    <div class="col-md-6 mb-3">
+
+                        <label class="form-label">
+                            Page ID
+                        </label>
+
+                        <input
+                            type="text"
+                            name="page_id"
+                            class="form-control"
+                            required>
+
+                    </div>
+
+                    <div class="col-md-6 mb-3">
+
+                        <label class="form-label">
+                            Access Token
+                        </label>
+
+                        <textarea
+                            name="access_token"
+                            class="form-control"
+                            rows="3"
+                            required></textarea>
+
+                    </div>
+
+                    <div class="col-md-6 mb-3">
+
+                        <label class="form-label">
+                            Niche
+                        </label>
+
+                        <input
+                            type="text"
+                            name="niche"
+                            class="form-control"
+                            placeholder="Motivation, Tech, News ...">
+
+                    </div>
+
+                </div>
+
+                <button class="btn btn-primary">
+
+                    ➕ Save Facebook Page
+
+                </button>
+
+            </form>
+
+        </div>
+
+    </div>
+
+    <table class="table table-dark table-striped table-bordered">
+
+        <thead>
+
+        <tr>
+
+            <th>ID</th>
+
+            <th>Page</th>
+
+            <th>Niche</th>
+
+            <th>Status</th>
+
+            <th>Action</th>
+
+        </tr>
+
+        </thead>
+
+        <tbody>
+
+        {% for page in pages %}
+
+        <tr>
+
+            <td>{{ page.id }}</td>
+
+            <td>{{ page.page_name }}</td>
+
+            <td>{{ page.niche }}</td>
+
+            <td>
+
+                <span class="badge bg-success">
+
+                    {{ page.status }}
+
+                </span>
+
+            </td>
+
+            <td>
+
+                <a
+                    href="/facebook/delete/{{ page.page_id }}"
+                    class="btn btn-danger btn-sm">
+
+                    Delete
+
+                </a>
+
+            </td>
+
+        </tr>
+
+        {% endfor %}
+
+        {% if pages|length == 0 %}
+
+        <tr>
+
+            <td colspan="5" class="text-center">
+
+                No Facebook Pages Added
+
+            </td>
+
+        </tr>
+
+        {% endif %}
+
+        </tbody>
+
+    </table>
+
+</div>
+
+</body>
+
+</html>
