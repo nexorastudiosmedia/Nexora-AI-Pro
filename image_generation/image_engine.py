@@ -15,9 +15,10 @@ SUBTEXT_COLOR = (200, 200, 195)  # slightly dimmer for the explanation part
 ACCENT_COLOR = (200, 170, 120)   # subtle gold accent
 BRAND_TEXT = "Nexora Media"
 
-HOOK_FONT_PATH = os.path.join(WINDOWS_FONTS_DIR, "georgiab.ttf")   # bold — for the hook line
-BODY_FONT_PATH = os.path.join(WINDOWS_FONTS_DIR, "georgia.ttf")    # regular — for the explanation
-BRAND_FONT_PATH = os.path.join(WINDOWS_FONTS_DIR, "georgia.ttf")
+FONT_DIR = os.path.join(os.path.dirname(__file__), "fonts")
+HOOK_FONT_PATH = os.path.join(FONT_DIR, "PlayfairDisplay-Bold.ttf")
+BODY_FONT_PATH = os.path.join(FONT_DIR, "PlayfairDisplay-Regular.ttf")
+BRAND_FONT_PATH = os.path.join(FONT_DIR, "PlayfairDisplay-Regular.ttf")
 
 
 def _make_gradient_background(size, top_color, bottom_color):
