@@ -1,144 +1,46 @@
-<!DOCTYPE html>
-<html lang="en">
+{% extends "base.html" %}
 
-<head>
+{% block title %}Dashboard | Nexora AI Pro{% endblock %}
 
-<meta charset="UTF-8">
-
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-<title>Nexora AI Dashboard</title>
-
-<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.7/dist/css/bootstrap.min.css" rel="stylesheet">
-
-<link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
-
-<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
-
-</head>
-
-<body>
-
+{% block content %}
 <div class="sidebar">
-
 <h2>NEXORA AI</h2>
-
-<a href="#"><i class="bi bi-speedometer2"></i> Dashboard</a>
-
-<a href="#"><i class="bi bi-stars"></i> AI Generator</a>
-
-<a href="#"><i class="bi bi-facebook"></i> Facebook Pages</a>
-
+<a href="/dashboard"><i class="bi bi-speedometer2"></i> Dashboard</a>
+<a href="/ai-generator"><i class="bi bi-stars"></i> AI Generator</a>
+<a href="/facebook"><i class="bi bi-facebook"></i> Facebook Pages</a>
 <a href="#"><i class="bi bi-calendar-event"></i> Scheduler</a>
-
 <a href="#"><i class="bi bi-bar-chart"></i> Analytics</a>
-
 <a href="#"><i class="bi bi-gear"></i> Settings</a>
-
+<a href="/logout"><i class="bi bi-box-arrow-right"></i> Logout</a>
 </div>
 
 <div class="main">
-
 <div class="topbar">
-
 <h3>Dashboard</h3>
-
-<div>
-
 <span class="badge bg-success">System Online</span>
-
-</div>
-
 </div>
 
 <div class="cards">
-
-<div class="card shadow">
-
-<h5>Facebook Pages</h5>
-
-<h1>0</h1>
-
+<div class="card shadow"><h5>Facebook Pages</h5><h1>{{ page_count }}</h1></div>
+<div class="card shadow"><h5>AI Posts</h5><h1>{{ ai_count }}</h1></div>
+<div class="card shadow"><h5>Scheduled</h5><h1>0</h1></div>
+<div class="card shadow"><h5>Images</h5><h1>0</h1></div>
 </div>
 
-<div class="card shadow">
-
-<h5>AI Posts</h5>
-
-<h1>0</h1>
-
-</div>
-
-<div class="card shadow">
-
-<h5>Scheduled</h5>
-
-<h1>0</h1>
-
-</div>
-
-<div class="card shadow">
-
-<h5>Images</h5>
-
-<h1>0</h1>
-
-</div>
-
-</div>
-
-<h3 class="mt-5 mb-4">
-
-Quick Actions
-
-</h3>
-
-<div class="row">
-
+<h3 class="mt-5 mb-4">Quick Actions</h3>
+<div class="row g-3">
 <div class="col-md-3">
-
-<button class="btn btn-info w-100 p-3">
-
-🤖 Generate AI Post
-
-</button>
-
+<a href="/ai-generator" class="btn btn-info w-100 p-3">🤖 Generate AI Post</a>
 </div>
-
 <div class="col-md-3">
-
-<button class="btn btn-primary w-100 p-3">
-
-📘 Add Facebook Page
-
-</button>
-
+<a href="/facebook" class="btn btn-primary w-100 p-3">📘 Add Facebook Page</a>
 </div>
-
 <div class="col-md-3">
-
-<button class="btn btn-warning w-100 p-3">
-
-📅 Schedule Post
-
-</button>
-
+<button class="btn btn-warning w-100 p-3">📅 Schedule Post</button>
 </div>
-
 <div class="col-md-3">
-
-<button class="btn btn-success w-100 p-3">
-
-🖼 Generate Image
-
-</button>
-
+<button class="btn btn-success w-100 p-3">🖼 Generate Image</button>
 </div>
-
 </div>
-
 </div>
-
-</body>
-
-</html>
+{% endblock %}

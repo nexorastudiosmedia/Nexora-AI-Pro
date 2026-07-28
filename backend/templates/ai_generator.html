@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block title %}AI Generator | Nexora AI Pro{% endblock %}
+{% block content %}
+<div class="container py-4">
+<h2 class="mb-4">🤖 AI Content Generator</h2>
+<div class="card shadow p-4">
+<form method="POST" action="/ai-generator/generate">
+<div class="mb-3">
+<label class="form-label">Prompt</label>
+<textarea class="form-control" name="prompt" rows="5" placeholder="Describe the post..." required></textarea>
+</div>
+<div class="row">
+<div class="col-md-4">
+<label>Platform</label>
+<select class="form-select" name="platform">
+<option>Facebook</option><option>Instagram</option><option>LinkedIn</option><option>X</option>
+</select>
+</div>
+<div class="col-md-4">
+<label>Tone</label>
+<select class="form-select" name="tone">
+<option>Professional</option><option>Viral</option><option>Funny</option><option>Motivational</option>
+</select>
+</div>
+<div class="col-md-4">
+<label>Language</label>
+<select class="form-select" name="language">
+<option>English</option><option>Urdu</option>
+</select>
+</div>
+</div>
+<button class="btn btn-info mt-4">Generate</button>
+</form>
+</div>
+{% if generated %}
+<div class="card shadow mt-4 p-4">
+<h4>Generated Content</h4>
+<textarea class="form-control" rows="10">{{ generated }}</textarea>
+</div>
+{% endif %}
+</div>
+{% endblock %}
