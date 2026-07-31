@@ -8,12 +8,58 @@ OUTPUT_DIR = "data/generated_images"
 WINDOWS_FONTS_DIR = r"C:\Windows\Fonts"
 
 IMAGE_SIZE = (1080, 1350)  # portrait, good for FB engagement
-BG_COLOR_TOP = (20, 24, 38)      # dark navy
-BG_COLOR_BOTTOM = (35, 30, 55)   # muted purple-navy
-TEXT_COLOR = (240, 240, 235)
-SUBTEXT_COLOR = (200, 200, 195)  # slightly dimmer for the explanation part
-ACCENT_COLOR = (200, 170, 120)   # subtle gold accent
-BRAND_TEXT = "Nexora Media"
+BRAND_TEXT = "Nexora Reflections"
+
+# ---- Style templates (rotated randomly per post) ----
+import random
+
+TEMPLATES = [
+    {
+        "name": "midnight_navy",
+        "bg_top": (20, 24, 38),
+        "bg_bottom": (35, 30, 55),
+        "text_color": (240, 240, 235),
+        "subtext_color": (200, 200, 195),
+        "accent_color": (200, 170, 120),  # gold
+    },
+    {
+        "name": "deep_forest",
+        "bg_top": (10, 25, 20),
+        "bg_bottom": (20, 45, 35),
+        "text_color": (235, 240, 230),
+        "subtext_color": (195, 205, 195),
+        "accent_color": (190, 170, 100),  # muted gold
+    },
+    {
+        "name": "wine_burgundy",
+        "bg_top": (35, 10, 18),
+        "bg_bottom": (55, 20, 28),
+        "text_color": (240, 235, 230),
+        "subtext_color": (205, 190, 190),
+        "accent_color": (210, 180, 120),
+    },
+    {
+        "name": "charcoal_grey",
+        "bg_top": (25, 25, 28),
+        "bg_bottom": (45, 45, 50),
+        "text_color": (245, 245, 245),
+        "subtext_color": (200, 200, 205),
+        "accent_color": (170, 170, 175),  # silver instead of gold
+    },
+    {
+        "name": "espresso_brown",
+        "bg_top": (30, 20, 15),
+        "bg_bottom": (50, 35, 25),
+        "text_color": (240, 232, 220),
+        "subtext_color": (205, 195, 185),
+        "accent_color": (200, 150, 90),
+    },
+]
+
+
+def pick_template():
+    """Randomly picks one of the visual style templates for a post."""
+    return random.choice(TEMPLATES)
 
 FONT_DIR = os.path.join(os.path.dirname(__file__), "fonts")
 HOOK_FONT_PATH = os.path.join(FONT_DIR, "PlayfairDisplay-Bold.ttf")
@@ -51,10 +97,19 @@ def _wrap_to_fit(draw, text, font, max_width):
     return textwrap.fill(text, width=wrap_width)
 
 
-def create_quote_card(quote_text: str, filename: str) -> str:
+def create_quote_card(quote_text: str, filename: str, template: dict = None) -> str:
     os.makedirs(OUTPUT_DIR, exist_ok=True)
 
-    img = _make_gradient_background(IMAGE_SIZE, BG_COLOR_TOP, BG_COLOR_BOTTOM)
+    # Pick a random visual style unless one was explicitly passed in
+    template = template or pick_template()
+    bg_top = template["bg_top"]
+    bg_bottom = template["bg_bottom"]
+    text_color = template["text_color"]
+    subtext_color = template["subtext_color"]
+    accent_color = template["accent_color"]
+    print(f"🎨 Using template: {template['name']}")
+
+    img = _make_gradient_background(IMAGE_SIZE, bg_top, bg_bottom)
     draw = ImageDraw.Draw(img)
 
     width, height = IMAGE_SIZE
@@ -88,7 +143,7 @@ def create_quote_card(quote_text: str, filename: str) -> str:
     accent_y = start_y - 60
     draw.line(
         [(width // 2 - 60, accent_y), (width // 2 + 60, accent_y)],
-        fill=ACCENT_COLOR,
+        fill=accent_color,
         width=3,
     )
 
@@ -96,7 +151,7 @@ def create_quote_card(quote_text: str, filename: str) -> str:
         (width // 2, start_y),
         wrapped_hook,
         font=hook_font,
-        fill=TEXT_COLOR,
+        fill=text_color,
         spacing=16,
         align="center",
         anchor="ma",
@@ -108,7 +163,7 @@ def create_quote_card(quote_text: str, filename: str) -> str:
             (width // 2, body_y),
             wrapped_body,
             font=body_font,
-            fill=SUBTEXT_COLOR,
+            fill=subtext_color,
             spacing=14,
             align="center",
             anchor="ma",
@@ -120,7 +175,7 @@ def create_quote_card(quote_text: str, filename: str) -> str:
         (width // 2, height - 110),
         BRAND_TEXT,
         font=brand_font,
-        fill=ACCENT_COLOR,
+        fill=accent_color,
         anchor="ma",
     )
 
