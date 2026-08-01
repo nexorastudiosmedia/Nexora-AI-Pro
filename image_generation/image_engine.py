@@ -1,5 +1,6 @@
 import os
 import re
+import math
 import textwrap
 from PIL import Image, ImageDraw, ImageFont
 
@@ -16,6 +17,7 @@ import random
 TEMPLATES = [
     {
         "name": "midnight_navy",
+        "layout": "framed",
         "bg_top": (20, 24, 38),
         "bg_bottom": (35, 30, 55),
         "text_color": (240, 240, 235),
@@ -24,6 +26,7 @@ TEMPLATES = [
     },
     {
         "name": "deep_forest",
+        "layout": "corner_accent",
         "bg_top": (10, 25, 20),
         "bg_bottom": (20, 45, 35),
         "text_color": (235, 240, 230),
@@ -32,6 +35,7 @@ TEMPLATES = [
     },
     {
         "name": "wine_burgundy",
+        "layout": "top_band",
         "bg_top": (35, 10, 18),
         "bg_bottom": (55, 20, 28),
         "text_color": (240, 235, 230),
@@ -40,6 +44,7 @@ TEMPLATES = [
     },
     {
         "name": "charcoal_grey",
+        "layout": "vignette",
         "bg_top": (25, 25, 28),
         "bg_bottom": (45, 45, 50),
         "text_color": (245, 245, 245),
@@ -48,6 +53,7 @@ TEMPLATES = [
     },
     {
         "name": "espresso_brown",
+        "layout": "big_quote_mark",
         "bg_top": (30, 20, 15),
         "bg_bottom": (50, 35, 25),
         "text_color": (240, 232, 220),
@@ -60,6 +66,69 @@ TEMPLATES = [
 def pick_template():
     """Randomly picks one of the visual style templates for a post."""
     return random.choice(TEMPLATES)
+
+
+def _blend(c1, c2, factor):
+    """Blends two RGB colors — factor 0 = c1, factor 1 = c2. Used for subtle, non-flat shapes."""
+    return tuple(int(c1[i] * (1 - factor) + c2[i] * factor) for i in range(3))
+
+
+def _apply_vignette(img, width, height):
+    """Darkens the corners/edges of the image for a moodier, less flat look."""
+    small_w, small_h = max(1, width // 4), max(1, height // 4)
+    cx, cy = small_w / 2, small_h / 2
+    max_dist = math.hypot(cx, cy)
+    mask = Image.new("L", (small_w, small_h))
+    pixel_data = []
+    for y in range(small_h):
+        for x in range(small_w):
+            dist = math.hypot(x - cx, y - cy) / max_dist
+            val = int(min(255, max(0, (dist - 0.55) * 255 * 1.8)))
+            pixel_data.append(val)
+    mask.putdata(pixel_data)
+    mask = mask.resize((width, height), Image.BICUBIC)
+    dark_overlay = Image.new("RGB", (width, height), (0, 0, 0))
+    img.paste(dark_overlay, (0, 0), mask)
+
+
+def _apply_decoration(img, draw, template):
+    """Draws a background design element behind the text, based on the template's layout."""
+    layout = template.get("layout", "plain")
+    width, height = img.size
+    bg_top = template["bg_top"]
+    bg_bottom = template["bg_bottom"]
+    accent = template["accent_color"]
+
+    if layout == "framed":
+        inset = 55
+        frame_color = _blend(bg_bottom, accent, 0.5)
+        draw.rectangle([inset, inset, width - inset, height - inset], outline=frame_color, width=3)
+
+    elif layout == "corner_accent":
+        shape_color_1 = _blend(bg_top, accent, 0.35)
+        draw.polygon([(0, 0), (260, 0), (0, 260)], fill=shape_color_1)
+        shape_color_2 = _blend(bg_bottom, accent, 0.35)
+        draw.polygon(
+            [(width, height), (width - 260, height), (width, height - 260)],
+            fill=shape_color_2,
+        )
+
+    elif layout == "top_band":
+        band_color = _blend(bg_top, accent, 0.25)
+        draw.rectangle([0, 0, width, 130], fill=band_color)
+        draw.line([(0, 130), (width, 130)], fill=accent, width=2)
+
+    elif layout == "vignette":
+        _apply_vignette(img, width, height)
+
+    elif layout == "big_quote_mark":
+        mark_color = _blend(bg_top, bg_bottom, 0.5)
+        mark_color = _blend(mark_color, accent, 0.18)
+        try:
+            mark_font = ImageFont.truetype(HOOK_FONT_PATH, 420)
+            draw.text((width // 2, 30), "\u201C", font=mark_font, fill=mark_color, anchor="ma")
+        except Exception:
+            pass
 
 FONT_DIR = os.path.join(os.path.dirname(__file__), "fonts")
 HOOK_FONT_PATH = os.path.join(FONT_DIR, "PlayfairDisplay-Bold.ttf")
