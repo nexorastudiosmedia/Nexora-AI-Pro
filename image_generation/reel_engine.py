@@ -2,14 +2,16 @@ import os
 import random
 import textwrap
 from PIL import Image, ImageDraw, ImageFont
+
 if not hasattr(Image, "ANTIALIAS"):
     Image.ANTIALIAS = Image.LANCZOS
+
 from moviepy.editor import ImageClip, CompositeVideoClip, AudioFileClip, afx
 
-# ---- Config (mirrors image_engine.py conventions) ----
+# ---- Config ----
 OUTPUT_DIR = "data/generated_reels"
-WIDTH, HEIGHT = 1080, 1920  # vertical, correct aspect for Reels
-DURATION = 16  # seconds
+WIDTH, HEIGHT = 1080, 1920
+DURATION = 18  # seconds — enough room for 3 text beats
 
 FONT_DIR = os.path.join(os.path.dirname(__file__), "fonts")
 HOOK_FONT_PATH = os.path.join(FONT_DIR, "PlayfairDisplay-Bold.ttf")
@@ -26,6 +28,13 @@ TEMPLATES = {
     "charcoal_grey": {"bg": (30, 30, 32), "accent": (210, 210, 210)},
     "espresso_brown": {"bg": (35, 24, 18), "accent": (196, 160, 110)},
 }
+
+# timing for the 3 text beats (start, duration) within DURATION=18
+BEAT_TIMING = [
+    (0.5, 5.5),   # hook: 0.5s -> 6.0s
+    (6.2, 5.6),   # line2: 6.2s -> 11.8s
+    (12.0, 5.8),  # line3: 12.0s -> 17.8s
+]
 
 
 def _make_background(template_name: str) -> Image.Image:
@@ -57,21 +66,16 @@ def _make_background(template_name: str) -> Image.Image:
     return img
 
 
-def _make_text_overlay(hook: str, line2: str, accent_rgb) -> Image.Image:
+def _make_line_image(text: str, is_hook: bool, accent_rgb) -> Image.Image:
     img = Image.new("RGBA", (WIDTH, HEIGHT), (0, 0, 0, 0))
     draw = ImageDraw.Draw(img)
 
-    hook_font = ImageFont.truetype(HOOK_FONT_PATH, 76)
-    line2_font = ImageFont.truetype(BODY_FONT_PATH, 48)
+    font = ImageFont.truetype(HOOK_FONT_PATH if is_hook else BODY_FONT_PATH, 78 if is_hook else 60)
+    color = (255, 255, 255, 255) if is_hook else (*accent_rgb, 255)
+    wrapped = textwrap.fill(text, width=17 if is_hook else 20)
 
-    wrapped_hook = textwrap.fill(hook, width=18)
-    wrapped_line2 = textwrap.fill(line2, width=24) if line2 else ""
-
-    draw.multiline_text((WIDTH // 2, HEIGHT // 2 - 60), wrapped_hook, font=hook_font,
-                         fill=(255, 255, 255, 255), anchor="mm", align="center", spacing=14)
-    if wrapped_line2:
-        draw.multiline_text((WIDTH // 2, HEIGHT // 2 + 160), wrapped_line2, font=line2_font,
-                             fill=(*accent_rgb, 255), anchor="mm", align="center", spacing=10)
+    draw.multiline_text((WIDTH // 2, HEIGHT // 2), wrapped, font=font,
+                         fill=color, anchor="mm", align="center", spacing=16)
     return img
 
 
@@ -82,32 +86,42 @@ def _pick_music():
     return os.path.join(MUSIC_DIR, random.choice(tracks)) if tracks else None
 
 
-def create_reel(hook: str, line2: str, filename: str = "daily_reel.mp4") -> str:
+def create_reel(hook: str, line2: str, line3: str = "", filename: str = "daily_reel.mp4") -> str:
     os.makedirs(OUTPUT_DIR, exist_ok=True)
     output_path = os.path.join(OUTPUT_DIR, filename)
+
+    lines = [hook, line2, line3 or "Sit with that for a moment."]
 
     template_name = random.choice(list(TEMPLATES.keys()))
     accent_rgb = TEMPLATES[template_name]["accent"]
 
     bg_path = os.path.join(OUTPUT_DIR, "_bg_frame.png")
-    text_path = os.path.join(OUTPUT_DIR, "_text_frame.png")
     _make_background(template_name).save(bg_path)
-    _make_text_overlay(hook, line2, accent_rgb).save(text_path)
 
     bg_clip = (
         ImageClip(bg_path)
         .set_duration(DURATION)
-        .resize(lambda t: 1 + 0.008 * t)
+        .resize(lambda t: 1 + 0.006 * t)
         .set_position(("center", "center"))
     )
-    text_clip = (
-        ImageClip(text_path)
-        .set_duration(DURATION - 0.6)
-        .set_start(0.6)
-        .crossfadein(0.8)
-        .crossfadeout(0.6)
-    )
-    video = CompositeVideoClip([bg_clip, text_clip], size=(WIDTH, HEIGHT)).set_duration(DURATION)
+
+    text_clips = []
+    temp_files = []
+    for i, (text, (start, dur)) in enumerate(zip(lines, BEAT_TIMING)):
+        line_path = os.path.join(OUTPUT_DIR, f"_line_{i}.png")
+        _make_line_image(text, is_hook=(i == 0), accent_rgb=accent_rgb).save(line_path)
+        temp_files.append(line_path)
+
+        clip = (
+            ImageClip(line_path)
+            .set_duration(dur)
+            .set_start(start)
+            .crossfadein(0.6)
+            .crossfadeout(0.5)
+        )
+        text_clips.append(clip)
+
+    video = CompositeVideoClip([bg_clip, *text_clips], size=(WIDTH, HEIGHT)).set_duration(DURATION)
 
     music_path = _pick_music()
     if music_path:
@@ -119,10 +133,15 @@ def create_reel(hook: str, line2: str, filename: str = "daily_reel.mp4") -> str:
     video.write_videofile(output_path, fps=24, codec="libx264", audio_codec="aac", preset="medium")
 
     os.remove(bg_path)
-    os.remove(text_path)
+    for f in temp_files:
+        os.remove(f)
     return output_path
 
 
 if __name__ == "__main__":
-    path = create_reel("The mind believes what it repeats", "Not what it is told once.")
+    path = create_reel(
+        "The mind believes what it repeats",
+        "Not what it is told once.",
+        "Question the voice before you trust it.",
+    )
     print(f"✅ Reel saved to: {path}")
