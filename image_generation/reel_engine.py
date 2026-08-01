@@ -2,6 +2,8 @@ import os
 import random
 import textwrap
 from PIL import Image, ImageDraw, ImageFont
+if not hasattr(Image, "ANTIALIAS"):
+    Image.ANTIALIAS = Image.LANCZOS
 from moviepy.editor import ImageClip, CompositeVideoClip, AudioFileClip, afx
 
 # ---- Config (mirrors image_engine.py conventions) ----
