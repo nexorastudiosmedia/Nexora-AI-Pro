@@ -16,5 +16,5 @@ Pillow>=10.0.0
 groq>=1.5.0
 
 # Reels (video generation)
-moviepy>=1.0.3
+moviepy==1.0.3
 imageio-ffmpeg>=0.4.9
