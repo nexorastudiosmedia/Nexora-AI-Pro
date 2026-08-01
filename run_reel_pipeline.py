@@ -117,7 +117,7 @@ async def run_reel_pipeline():
     print(f"  ✔ Hook: {content['hook']}\n")
 
     print("Step 3/4: Building the reel video...")
-    video_path = create_reel(content["hook"], content.get("line2", ""))
+    video_path = create_reel(content["hook"], content.get("line2", ""), content.get("line3", ""))
     print(f"  ✔ Video saved: {video_path}\n")
 
     print("Step 4/4: Publishing reel to Facebook Page...")
