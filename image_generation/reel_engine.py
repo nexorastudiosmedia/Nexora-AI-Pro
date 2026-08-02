@@ -79,11 +79,22 @@ def _make_line_image(text: str, is_hook: bool, accent_rgb) -> Image.Image:
     return img
 
 
-def _pick_music():
-    if not os.path.isdir(MUSIC_DIR):
-        return None
-    tracks = [f for f in os.listdir(MUSIC_DIR) if f.lower().endswith((".mp3", ".m4a", ".wav"))]
-    return os.path.join(MUSIC_DIR, random.choice(tracks)) if tracks else None
+def _pick_music(mood: str = None):
+    candidates = []
+    if mood:
+        mood_dir = os.path.join(MUSIC_DIR, mood)
+        if os.path.isdir(mood_dir):
+            candidates = [
+                os.path.join(mood_dir, f) for f in os.listdir(mood_dir)
+                if f.lower().endswith((".mp3", ".m4a", ".wav"))
+            ]
+    if not candidates and os.path.isdir(MUSIC_DIR):
+        for root, _, files in os.walk(MUSIC_DIR):
+            candidates.extend(
+                os.path.join(root, f) for f in files
+                if f.lower().endswith((".mp3", ".m4a", ".wav"))
+            )
+    return random.choice(candidates) if candidates else None
 
 
 def create_reel(hook: str, line2: str, line3: str = "", filename: str = "daily_reel.mp4") -> str:
