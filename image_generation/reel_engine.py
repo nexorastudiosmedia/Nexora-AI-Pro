@@ -97,7 +97,7 @@ def _pick_music(mood: str = None):
     return random.choice(candidates) if candidates else None
 
 
-def create_reel(hook: str, line2: str, line3: str = "", filename: str = "daily_reel.mp4") -> str:
+def create_reel(hook: str, line2: str, line3: str = "", mood: str = None, filename: str = "daily_reel.mp4") -> str:
     os.makedirs(OUTPUT_DIR, exist_ok=True)
     output_path = os.path.join(OUTPUT_DIR, filename)
 
