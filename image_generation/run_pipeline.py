@@ -1,15 +1,22 @@
 """
-Master pipeline: Trend Hunter -> Content Engine -> Image Engine -> Facebook Post
-Runs the full automation: fetches a trending topic, generates a philosophy
-post, creates a matching quote-card image, and publishes both to the
-Facebook Page in a single post.
+Reel pipeline: Trend Hunter -> Reel Content Engine -> Mood Classifier ->
+Reel Engine -> Facebook Reel Post
+
+This is a SEPARATE pipeline from run_pipeline.py so a Reel never shares text
+with a same-day regular post. It also intentionally picks a DIFFERENT trend
+item than the main pipeline (which always takes items[0]) to reduce overlap.
+
+The mood classifier reads the generated script and picks a matching
+background-music folder (calm / hopeful / melancholic / intense) so the
+music always fits the content instead of being random.
 """
 import asyncio
 import os
+import random
 import requests
 from dotenv import load_dotenv
 
-from content.content_engine import ContentEngine
+from content.reel_content_engine import generate_reel_content
 from content.mood_classifier import classify_mood
 from trend_hunter.di.container import create_container
 from trend_hunter.domain.models import TrendHunterRequest, TrendQuery
@@ -17,15 +24,16 @@ from trend_hunter.providers.common.http_client import AsyncHttpClient
 from trend_hunter.providers.google_news_rss_provider import create_google_news_rss_provider
 from trend_hunter.providers.google_trends_provider import create_google_trends_provider
 from trend_hunter.providers.rss_provider import create_rss_provider
-from image_generation.image_engine import create_quote_card
+from image_generation.reel_engine import create_reel
 
 load_dotenv()
 
 PAGE_ID = os.getenv("FACEBOOK_PAGE_ID")
 ACCESS_TOKEN = os.getenv("FACEBOOK_ACCESS_TOKEN")
+GRAPH_VERSION = "v20.0"
 
 
-async def get_top_trend():
+async def get_reel_trend():
     container = create_container()
     http_client = AsyncHttpClient(container.settings)
     container.register_provider(create_google_news_rss_provider(container.settings, http_client))
@@ -36,54 +44,100 @@ async def get_top_trend():
 
     if not response.items:
         raise RuntimeError("No trends found — check your internet connection.")
-    return response.items[0]
+
+    # Deliberately avoid items[0] (that's what the regular post pipeline uses)
+    # so a Reel and a same-day post don't end up inspired by the same topic.
+    pool = response.items[1:5] if len(response.items) > 1 else response.items
+    return random.choice(pool)
 
 
-def post_photo_to_facebook(image_path: str, caption: str):
+def post_reel_to_facebook(video_path: str, caption: str):
     """
-    Uploads a local image with a caption to the Facebook Page.
-    This publishes both the image and text as a single post.
+    Publishes a local MP4 as a Facebook Page Reel using the 3-step
+    Video Reels API (start -> upload -> finish/publish).
     """
-    url = f"https://graph.facebook.com/v20.0/{PAGE_ID}/photos"
+    base_url = f"https://graph.facebook.com/{GRAPH_VERSION}"
 
-    with open(image_path, "rb") as image_file:
-        files = {"source": image_file}
-        payload = {
-            "caption": caption,
+    # Step 1: start upload session
+    start_resp = requests.post(
+        f"{base_url}/{PAGE_ID}/video_reels",
+        data={"upload_phase": "start", "access_token": ACCESS_TOKEN},
+    )
+    start_data = start_resp.json()
+    if "video_id" not in start_data:
+        print("❌ Failed to start reel upload session.")
+        print("Error:", start_data)
+        return start_data
+
+    video_id = start_data["video_id"]
+    upload_url = start_data["upload_url"]
+
+    # Step 2: upload video bytes
+    file_size = os.path.getsize(video_path)
+    with open(video_path, "rb") as f:
+        upload_resp = requests.post(
+            upload_url,
+            headers={
+                "Authorization": f"OAuth {ACCESS_TOKEN}",
+                "offset": "0",
+                "file_size": str(file_size),
+            },
+            data=f.read(),
+        )
+
+    if upload_resp.status_code != 200 or not upload_resp.json().get("success", False):
+        print("❌ Failed to upload reel video.")
+        print("Error:", upload_resp.status_code, upload_resp.text)
+        return upload_resp.json()
+
+    # Step 3: publish
+    finish_resp = requests.post(
+        f"{base_url}/{PAGE_ID}/video_reels",
+        data={
+            "upload_phase": "finish",
+            "video_id": video_id,
+            "video_state": "PUBLISHED",
+            "description": caption,
             "access_token": ACCESS_TOKEN,
-        }
-        response = requests.post(url, data=payload, files=files)
+        },
+    )
+    finish_data = finish_resp.json()
 
-    result = response.json()
-
-    if response.status_code == 200 and "id" in result:
-        print("✅ Post with image successful!")
-        print("Post ID:", result["id"])
+    if finish_data.get("success", False):
+        print("✅ Reel published successfully!")
+        print("Video ID:", video_id)
     else:
-        print("❌ Post failed.")
-        print("Error:", result)
+        print("❌ Reel publish step failed.")
+        print("Error:", finish_data)
 
-    return result
+    return finish_data
 
 
-async def run_pipeline():
-    print("Step 1/4: Fetching top trending topic...")
-    top_trend = await get_top_trend()
-    print(f"  → Top trend: {top_trend.title}\n")
+async def run_reel_pipeline():
+    print("Step 1/5: Fetching a reel-specific trending topic...")
+    trend = await get_reel_trend()
+    print(f"  ✔ Reel topic: {trend.title}\n")
 
-    print("Step 2/4: Generating philosophy-angle post (Groq AI)...")
-    engine = ContentEngine()
-    post = await engine.generate(top_trend.title, top_trend.url)
-    caption_text = post.as_facebook_text()
-    print("  → Post generated.\n")
+    print("Step 2/5: Generating short-form reel content (Groq AI)...")
+    content = generate_reel_content(trend.title)
+    print(f"  ✔ Hook: {content['hook']}\n")
 
-    print("Step 3/4: Creating quote-card image...")
-    image_path = create_quote_card(caption_text, "daily_post.png")
-    print(f"  → Image saved: {image_path}\n")
+    print("Step 3/5: Detecting content mood for matching music...")
+    mood = classify_mood(content["hook"], content.get("line2", ""), content.get("line3", ""))
+    print(f"  ✔ Mood detected: {mood}\n")
 
-    print("Step 4/4: Publishing to Facebook Page...")
-    post_photo_to_facebook(image_path, caption_text)
+    print("Step 4/5: Building the reel video...")
+    video_path = create_reel(
+        content["hook"],
+        content.get("line2", ""),
+        content.get("line3", ""),
+        mood=mood,
+    )
+    print(f"  ✔ Video saved: {video_path}\n")
+
+    print("Step 5/5: Publishing reel to Facebook Page...")
+    post_reel_to_facebook(video_path, content["caption"])
 
 
 if __name__ == "__main__":
-    asyncio.run(run_pipeline())
+    asyncio.run(run_reel_pipeline())
