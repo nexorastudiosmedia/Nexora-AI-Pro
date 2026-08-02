@@ -10,6 +10,7 @@ import requests
 from dotenv import load_dotenv
 
 from content.content_engine import ContentEngine
+from content.mood_classifier import classify_mood
 from trend_hunter.di.container import create_container
 from trend_hunter.domain.models import TrendHunterRequest, TrendQuery
 from trend_hunter.providers.common.http_client import AsyncHttpClient
