@@ -1,0 +1,29 @@
+name: Daily Story Post
+
+on:
+  schedule:
+    - cron: '0 16 * * *'  # ~12:00 PM ET — separate from posts (12:30/23:30 UTC) and reel (19:00 UTC)
+  workflow_dispatch:
+
+jobs:
+  post-story:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run story pipeline
+        env:
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          GROQ_MODEL: ${{ secrets.GROQ_MODEL }}
+          FACEBOOK_ACCESS_TOKEN: ${{ secrets.FACEBOOK_ACCESS_TOKEN }}
+          FACEBOOK_PAGE_ID: ${{ secrets.FACEBOOK_PAGE_ID }}
+        run: python run_story_pipeline.py
