@@ -1,9 +1,10 @@
 """
-Story pipeline: Trend Hunter -> Story Content Engine -> (random) Image/Video
-Story Engine -> Facebook Story Post
+Story pipeline: Trend Hunter -> Story Content Engine -> Video Story Engine
+-> Facebook Story Post
 
 Always generates FRESH content (never reused from run_pipeline.py or
-run_reel_pipeline.py). Randomly alternates between image and video stories.
+run_reel_pipeline.py). Always produces a video story (with matching zoom
++ music) so every story is visually and audibly consistent.
 """
 import asyncio
 import os
@@ -18,7 +19,6 @@ from trend_hunter.providers.common.http_client import AsyncHttpClient
 from trend_hunter.providers.google_news_rss_provider import create_google_news_rss_provider
 from trend_hunter.providers.google_trends_provider import create_google_trends_provider
 from trend_hunter.providers.rss_provider import create_rss_provider
-from image_generation.story_image_engine import create_story_image
 from image_generation.story_video_engine import create_story_video
 
 load_dotenv()
@@ -44,38 +44,6 @@ async def get_story_trend():
     # (items[1:5]) so a Story never overlaps their topic pick.
     pool = response.items[5:10] if len(response.items) > 5 else response.items
     return random.choice(pool)
-
-
-def post_photo_story(image_path: str):
-    base_url = f"https://graph.facebook.com/{GRAPH_VERSION}"
-
-    # Step 1: upload the photo unpublished to get a photo_id
-    with open(image_path, "rb") as image_file:
-        upload_resp = requests.post(
-            f"{base_url}/{PAGE_ID}/photos",
-            data={"published": "false", "access_token": ACCESS_TOKEN},
-            files={"source": image_file},
-        )
-    upload_data = upload_resp.json()
-    if "id" not in upload_data:
-        print("❌ Failed to upload story photo.")
-        print("Error:", upload_data)
-        return upload_data
-
-    photo_id = upload_data["id"]
-
-    # Step 2: publish it as a photo story
-    story_resp = requests.post(
-        f"{base_url}/{PAGE_ID}/photo_stories",
-        data={"photo_id": photo_id, "access_token": ACCESS_TOKEN},
-    )
-    story_data = story_resp.json()
-    if story_resp.status_code == 200:
-        print("✅ Photo story published!")
-    else:
-        print("❌ Photo story publish failed.")
-        print("Error:", story_data)
-    return story_data
 
 
 def post_video_story(video_path: str):
@@ -135,7 +103,7 @@ async def run_story_pipeline():
     content = generate_story_content(trend.title)
     print(f"  ✔ Line: {content['line']}\n")
 
-print("Step 3/3: Building the story video and publishing...")
+    print("Step 3/3: Building the story video and publishing...")
     asset_path = create_story_video(content["line"])
     post_video_story(asset_path)
 
