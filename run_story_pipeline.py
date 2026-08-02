@@ -138,5 +138,7 @@ async def run_story_pipeline():
 print("Step 3/3: Building the story video and publishing...")
     asset_path = create_story_video(content["line"])
     post_video_story(asset_path)
+
+
 if __name__ == "__main__":
     asyncio.run(run_story_pipeline())
