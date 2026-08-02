@@ -135,16 +135,9 @@ async def run_story_pipeline():
     content = generate_story_content(trend.title)
     print(f"  ✔ Line: {content['line']}\n")
 
-    story_format = random.choice(["image", "video"])
-    print(f"Step 3/3: Building a {story_format} story and publishing...")
-
-    if story_format == "image":
-        asset_path = create_story_image(content["line"])
-        post_photo_story(asset_path)
-    else:
-        asset_path = create_story_video(content["line"])
-        post_video_story(asset_path)
-
+print("Step 3/3: Building the story video and publishing...")
+    asset_path = create_story_video(content["line"])
+    post_video_story(asset_path)
 
 if __name__ == "__main__":
     asyncio.run(run_story_pipeline())
