@@ -1,9 +1,11 @@
-name: Daily Reel Post
+name: Daily Reel Post (Twice a Day)
 
 on:
   schedule:
-    # 3:00 PM ET (Reel post, separate from morning/evening text posts) — 19:00 UTC
+    # 3:00 PM ET (Reel post, separate from morning text post) — 19:00 UTC
     - cron: '0 19 * * *'
+    # 7:30 PM ET (second reel — was an image post, moved here since Reels get more organic reach) — 23:30 UTC
+    - cron: '30 23 * * *'
   workflow_dispatch:  # allows manual trigger anytime from GitHub UI
 
 jobs:
