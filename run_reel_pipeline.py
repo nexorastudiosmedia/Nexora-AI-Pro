@@ -41,7 +41,18 @@ async def get_reel_trend():
 
     # Deliberately avoid items[0] (that's what the regular post pipeline uses)
     # so a Reel and a same-day post don't end up inspired by the same topic.
-    pool = response.items[1:5] if len(response.items) > 1 else response.items
+    # With TWO reels a day now, also split the remaining pool in half by
+    # time-of-day (UTC hour) so the 3PM ET and 7:30PM ET runs never draw
+    # from the same slice — avoids two same-day reels covering one topic.
+    full_pool = response.items[1:5] if len(response.items) > 1 else response.items
+    if len(full_pool) >= 2:
+        from datetime import datetime, timezone
+        hour = datetime.now(timezone.utc).hour
+        midpoint = len(full_pool) // 2
+        # 19:00 UTC run -> first half, 23:30 UTC run -> second half
+        pool = full_pool[:midpoint] if hour < 21 else full_pool[midpoint:]
+    else:
+        pool = full_pool
     return random.choice(pool)
 
 
