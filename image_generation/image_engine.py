@@ -73,6 +73,18 @@ def _blend(c1, c2, factor):
     return tuple(int(c1[i] * (1 - factor) + c2[i] * factor) for i in range(3))
 
 
+def _apply_grain(img, width, height, opacity=14):
+    """Adds a subtle film-grain texture over the whole image — this is the
+    single biggest visual cue that separates a 'template look' from a
+    'premium/editorial look' on a flat gradient background."""
+    import random as _r
+    noise = Image.new("L", (width, height))
+    noise.putdata([_r.randint(0, 255) for _ in range(width * height)])
+    noise_rgb = Image.merge("RGB", (noise, noise, noise))
+    img_arr = Image.blend(img, noise_rgb, opacity / 255)
+    return img_arr
+
+
 def _apply_vignette(img, width, height):
     """Darkens the corners/edges of the image for a moodier, less flat look."""
     small_w, small_h = max(1, width // 4), max(1, height // 4)
@@ -216,6 +228,18 @@ def create_quote_card(quote_text: str, filename: str, template: dict = None) -> 
         width=3,
     )
 
+    # Soft drop-shadow behind the hook text — small offset, low-contrast shadow
+    # color, gives the text real depth instead of sitting flat on the gradient
+    shadow_color = _blend(bg_bottom, (0, 0, 0), 0.6)
+    draw.multiline_text(
+        (width // 2 + 3, start_y + 4),
+        wrapped_hook,
+        font=hook_font,
+        fill=shadow_color,
+        spacing=16,
+        align="center",
+        anchor="ma",
+    )
     draw.multiline_text(
         (width // 2, start_y),
         wrapped_hook,
@@ -238,6 +262,22 @@ def create_quote_card(quote_text: str, filename: str, template: dict = None) -> 
             anchor="ma",
         )
 
+    # Small CTA microcopy just above the brand line — nudges people to comment,
+    # which is the single strongest signal for organic reach on Facebook.
+    cta_font = ImageFont.truetype(BODY_FONT_PATH, 26)
+    cta_options = [
+        "Share your thoughts below",
+        "Do you agree? Comment below",
+        "Tag someone who needs this",
+    ]
+    draw.text(
+        (width // 2, height - 155),
+        random.choice(cta_options),
+        font=cta_font,
+        fill=subtext_color,
+        anchor="ma",
+    )
+
     # Branding at the bottom
     brand_font = ImageFont.truetype(BRAND_FONT_PATH, 32)
     draw.text(
@@ -247,6 +287,8 @@ def create_quote_card(quote_text: str, filename: str, template: dict = None) -> 
         fill=accent_color,
         anchor="ma",
     )
+
+    img = _apply_grain(img, width, height)
 
     output_path = os.path.join(OUTPUT_DIR, filename)
     img.save(output_path, quality=95)
