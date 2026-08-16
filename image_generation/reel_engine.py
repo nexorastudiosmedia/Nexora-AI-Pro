@@ -11,7 +11,7 @@ from moviepy.editor import ImageClip, CompositeVideoClip, AudioFileClip, afx
 # ---- Config ----
 OUTPUT_DIR = "data/generated_reels"
 WIDTH, HEIGHT = 1080, 1920
-DURATION = 18  # seconds — enough room for 3 text beats
+DURATION = 21  # seconds — 3 text beats + a short follow-CTA end card
 
 FONT_DIR = os.path.join(os.path.dirname(__file__), "fonts")
 HOOK_FONT_PATH = os.path.join(FONT_DIR, "PlayfairDisplay-Bold.ttf")
@@ -29,12 +29,23 @@ TEMPLATES = {
     "espresso_brown": {"bg": (35, 24, 18), "accent": (196, 160, 110)},
 }
 
-# timing for the 3 text beats (start, duration) within DURATION=18
+# timing for the 3 text beats (start, duration) within DURATION=21
 BEAT_TIMING = [
     (0.5, 5.5),   # hook: 0.5s -> 6.0s
     (6.2, 5.6),   # line2: 6.2s -> 11.8s
     (12.0, 5.8),  # line3: 12.0s -> 17.8s
 ]
+FOLLOW_CTA_TIMING = (18.2, 2.6)  # short end card after the 3rd beat fades out
+
+
+def _apply_grain(img: Image.Image, opacity=12) -> Image.Image:
+    """Subtle film grain — makes the flat gradient background feel premium/
+    editorial instead of like a plain template."""
+    w, h = img.size
+    noise = Image.new("L", (w, h))
+    noise.putdata([random.randint(0, 255) for _ in range(w * h)])
+    noise_rgb = Image.merge("RGB", (noise, noise, noise))
+    return Image.blend(img.convert("RGB"), noise_rgb, opacity / 255)
 
 
 def _make_background(template_name: str) -> Image.Image:
@@ -63,7 +74,7 @@ def _make_background(template_name: str) -> Image.Image:
     brand_font = ImageFont.truetype(BRAND_FONT_PATH, 34)
     draw.text((WIDTH // 2, HEIGHT - 90), BRAND_TEXT, font=brand_font,
                fill=t["accent"], anchor="mm")
-    return img
+    return _apply_grain(img)
 
 
 def _make_line_image(text: str, is_hook: bool, accent_rgb) -> Image.Image:
@@ -76,6 +87,24 @@ def _make_line_image(text: str, is_hook: bool, accent_rgb) -> Image.Image:
 
     draw.multiline_text((WIDTH // 2, HEIGHT // 2), wrapped, font=font,
                          fill=color, anchor="mm", align="center", spacing=16)
+    return img
+
+
+def _make_follow_card(accent_rgb) -> Image.Image:
+    """A short end card that nudges viewers to follow the Page — this is what
+    turns one-off viral views into actual follower growth."""
+    img = Image.new("RGBA", (WIDTH, HEIGHT), (0, 0, 0, 0))
+    draw = ImageDraw.Draw(img)
+    brand_font = ImageFont.truetype(HOOK_FONT_PATH, 58)
+    sub_font = ImageFont.truetype(BODY_FONT_PATH, 40)
+    draw.multiline_text(
+        (WIDTH // 2, HEIGHT // 2 - 40), "Nexora Reflections",
+        font=brand_font, fill=(255, 255, 255, 255), anchor="mm", align="center",
+    )
+    draw.multiline_text(
+        (WIDTH // 2, HEIGHT // 2 + 50), "Follow for daily reflections",
+        font=sub_font, fill=(*accent_rgb, 255), anchor="mm", align="center",
+    )
     return img
 
 
@@ -109,12 +138,19 @@ def create_reel(hook: str, line2: str, line3: str = "", mood: str = None, filena
     bg_path = os.path.join(OUTPUT_DIR, "_bg_frame.png")
     _make_background(template_name).save(bg_path)
 
-    bg_clip = (
-        ImageClip(bg_path)
-        .set_duration(DURATION)
-        .resize(lambda t: 1 + 0.006 * t)
-        .set_position(("center", "center"))
-    )
+    # Alternate zoom-in / slow pan so every reel doesn't move the exact same
+    # way — small thing, but it reads as more "produced" across a feed.
+    motion_style = random.choice(["zoom_in", "zoom_out", "drift"])
+    if motion_style == "zoom_in":
+        bg_clip = ImageClip(bg_path).set_duration(DURATION).resize(lambda t: 1 + 0.006 * t)
+    elif motion_style == "zoom_out":
+        bg_clip = ImageClip(bg_path).set_duration(DURATION).resize(lambda t: 1.08 - 0.004 * t)
+    else:  # drift — gentle diagonal pan at a fixed slight zoom
+        bg_clip = ImageClip(bg_path).set_duration(DURATION).resize(1.1).set_position(
+            lambda t: (-20 + 1.2 * t, -15 + 0.8 * t)
+        )
+    if motion_style != "drift":
+        bg_clip = bg_clip.set_position(("center", "center"))
 
     text_clips = []
     temp_files = []
@@ -131,6 +167,19 @@ def create_reel(hook: str, line2: str, line3: str = "", mood: str = None, filena
             .crossfadeout(0.5)
         )
         text_clips.append(clip)
+
+    # Follow-CTA end card
+    follow_path = os.path.join(OUTPUT_DIR, "_follow_card.png")
+    _make_follow_card(accent_rgb).save(follow_path)
+    temp_files.append(follow_path)
+    follow_start, follow_dur = FOLLOW_CTA_TIMING
+    follow_clip = (
+        ImageClip(follow_path)
+        .set_duration(follow_dur)
+        .set_start(follow_start)
+        .crossfadein(0.4)
+    )
+    text_clips.append(follow_clip)
 
     video = CompositeVideoClip([bg_clip, *text_clips], size=(WIDTH, HEIGHT)).set_duration(DURATION)
 
