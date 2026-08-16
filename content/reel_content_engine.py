@@ -24,7 +24,8 @@ def generate_reel_content(trend_title: str) -> dict:
     client = Groq(api_key=os.getenv("GROQ_API_KEY"))
 
     prompt = f"""You write ultra-short philosophical reel scripts for a Facebook
-Reels page called "Nexora Reflections".
+Reels page called "Nexora Reflections". Your #1 job is to stop the scroll in
+the first 1 second, because Reels live or die on the hook.
 
 Trending topic for loose inspiration (do not mention it literally): "{trend_title}"
 
@@ -32,10 +33,14 @@ Write ONE piece of short-form philosophical content for an 18-second video,
 told in THREE beats that build on each other:
 
 Rules:
-- hook: max 8 words, punchy, screen-friendly, no hashtags, no emojis — the first thing viewers see
+- hook: max 8 words, MUST be a curiosity-gap, a bold/mildly controversial claim, \
+or a direct "you" statement — never a generic proverb opener. This line alone \
+decides if someone keeps watching. No hashtags, no emojis.
 - line2: max 12 words, REQUIRED (never empty), develops the hook into a fuller thought
 - line3: max 12 words, REQUIRED (never empty), a closing reflection or gentle challenge — the "punch" that ends the video
-- caption: 1-2 sentences for the Facebook caption below the video, ending with 3-5 relevant hashtags
+- caption: 2-3 sentences for the Facebook caption below the video. The LAST sentence \
+MUST be a direct engagement question or prompt (e.g. "Do you agree, or nah?", \
+"Tag someone who needs this."), followed by 3-5 relevant hashtags.
 - Must feel written for video pacing (three distinct short beats, not one long sentence split up)
 - Avoid overused/common quotes
 
