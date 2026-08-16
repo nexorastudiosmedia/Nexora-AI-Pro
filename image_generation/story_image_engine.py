@@ -8,6 +8,7 @@ WIDTH, HEIGHT = 1080, 1920  # Story aspect ratio
 OUTPUT_DIR = "data/generated_stories"
 FONT_DIR = os.path.join(os.path.dirname(__file__), "fonts")
 HOOK_FONT_PATH = os.path.join(FONT_DIR, "PlayfairDisplay-Bold.ttf")
+BODY_FONT_PATH = os.path.join(FONT_DIR, "PlayfairDisplay-Regular.ttf")
 BRAND_FONT_PATH = os.path.join(FONT_DIR, "PlayfairDisplay-Regular.ttf")
 
 BRAND_TEXT = "Nexora Reflections"
@@ -19,6 +20,14 @@ TEMPLATES = {
     "charcoal_grey": {"bg": (30, 30, 32), "accent": (210, 210, 210)},
     "espresso_brown": {"bg": (35, 24, 18), "accent": (196, 160, 110)},
 }
+
+
+def _apply_grain(img: Image.Image, opacity=12) -> Image.Image:
+    w, h = img.size
+    noise = Image.new("L", (w, h))
+    noise.putdata([random.randint(0, 255) for _ in range(w * h)])
+    noise_rgb = Image.merge("RGB", (noise, noise, noise))
+    return Image.blend(img.convert("RGB"), noise_rgb, opacity / 255)
 
 
 def create_story_image(line: str, filename: str = "daily_story.png") -> str:
@@ -43,6 +52,7 @@ def create_story_image(line: str, filename: str = "daily_story.png") -> str:
         vdraw.ellipse([-300, -300, WIDTH + 300, HEIGHT + 300], fill=255)
         dark = Image.new("RGB", (WIDTH, HEIGHT), (0, 0, 0))
         img = Image.composite(img, dark, vignette)
+        draw = ImageDraw.Draw(img)  # img was replaced above — rebind draw or all text below is lost
     elif template_name == "espresso_brown":
         big_font = ImageFont.truetype(HOOK_FONT_PATH, 700)
         draw.text((60, HEIGHT // 2 - 350), "\u201C", font=big_font,
@@ -57,6 +67,11 @@ def create_story_image(line: str, filename: str = "daily_story.png") -> str:
     draw.text((WIDTH // 2, HEIGHT - 100), BRAND_TEXT, font=brand_font,
                fill=t["accent"], anchor="mm")
 
+    react_font = ImageFont.truetype(BODY_FONT_PATH, 28)
+    draw.text((WIDTH // 2, HEIGHT - 150), "React if this hit different",
+               font=react_font, fill=t["accent"], anchor="mm")
+
+    img = _apply_grain(img)
     img.save(output_path)
     return output_path
 
