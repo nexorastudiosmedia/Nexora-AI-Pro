@@ -1,11 +1,9 @@
-name: Daily Facebook Post (Twice a Day)
+name: Daily Facebook Post (Once a Day)
 
 on:
   schedule:
     # 8:30 AM ET (morning post) — 12:30 UTC
     - cron: '30 12 * * *'
-    # 7:30 PM ET (evening post) — 23:30 UTC
-    - cron: '30 23 * * *'
   workflow_dispatch:  # allows manual trigger anytime from GitHub UI
 
 jobs:
