@@ -30,43 +30,58 @@ the first 1 second, because Reels live or die on the hook.
 Trending topic for loose inspiration (do not mention it literally): "{trend_title}"
 
 Write ONE piece of short-form philosophical content for an 18-second video,
-told in THREE beats that build on each other:
+told in THREE beats that build on each other.
 
 Rules:
-- hook: max 8 words, MUST be a curiosity-gap, a bold/mildly controversial claim, \
-or a direct "you" statement — never a generic proverb opener. This line alone \
-decides if someone keeps watching. No hashtags, no emojis.
+- hook: max 8 words, MUST be a curiosity-gap, a bold/mildly controversial claim,
+  or a direct "you" statement — never a generic proverb opener. This line alone
+  decides if someone keeps watching. No hashtags, no emojis.
 - line2: max 12 words, REQUIRED (never empty), develops the hook into a fuller thought
-- line3: max 12 words, REQUIRED (never empty), a closing reflection or gentle challenge — the "punch" that ends the video
-- caption: 2-3 sentences for the Facebook caption below the video. The LAST sentence \
-MUST be a direct engagement question or prompt (e.g. "Do you agree, or nah?", \
-"Tag someone who needs this."), followed by 3-5 relevant hashtags.
-- Must feel written for video pacing (three distinct short beats, not one long sentence split up)
+- line3: max 12 words, REQUIRED (never empty), a closing reflection or gentle challenge
+  — the "punch" that ends the video
+- caption: 2-3 sentences for the Facebook caption below the video. The LAST sentence
+  MUST be a direct engagement question or prompt, followed by 3-5 relevant hashtags.
+- Must feel written for video pacing (three distinct short beats, not one long sentence
+  split up)
 - Avoid overused/common quotes
+
+Return ONLY valid JSON with exactly these keys:
+{{
+  "hook": "string",
+  "line2": "string",
+  "line3": "string",
+  "caption": "string"
+}}
+"""
+
     response = client.chat.completions.create(
         model=GROQ_MODEL,
-        messages=[{"role": "user", "content": prompt}],
+        messages=[
+            {"role": "user", "content": prompt}
+        ],
         temperature=0.9,
         max_tokens=350,
         response_format={"type": "json_object"},
     )
-    messages=[{"role": "user", "content": prompt}],
-    temperature=0.9,
-    max_tokens=350,
-    response_format={"type": "json_object"},
-)
+
     raw = response.choices[0].message.content.strip()
     raw = raw.replace("```json", "").replace("```", "").strip()
 
     data = json.loads(raw)
-    # safety fallbacks in case the model skips a field
+
+    # Safety fallbacks in case the model skips a field
+    data.setdefault("hook", "Maybe you are thinking about this wrong.")
     data.setdefault("line2", "There is more beneath the surface.")
     data.setdefault("line3", "Sit with that for a moment.")
+    data.setdefault("caption", "Sometimes the obvious answer hides a deeper truth. What do you think? #philosophy #mindset #reflection")
+
     return data
 
 
 if __name__ == "__main__":
     from dotenv import load_dotenv
+
     load_dotenv()
+
     sample = generate_reel_content("the pace of modern life")
     print(json.dumps(sample, indent=2))
