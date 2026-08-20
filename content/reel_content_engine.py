@@ -48,13 +48,13 @@ Return ONLY valid JSON, no markdown, no preamble, in this exact shape:
 {{"hook": "...", "line2": "...", "line3": "...", "caption": "..."}}
 """
 
-    response = client.chat.completions.create(
-        model=GROQ_MODEL,
-        messages=[{"role": "user", "content": prompt}],
-        temperature=0.9,
-        max_tokens=350,
-    )
-
+response = client.chat.completions.create(
+    model=GROQ_MODEL,
+    messages=[{"role": "user", "content": prompt}],
+    temperature=0.9,
+    max_tokens=350,
+    response_format={"type": "json_object"},
+)
     raw = response.choices[0].message.content.strip()
     raw = raw.replace("```json", "").replace("```", "").strip()
 
