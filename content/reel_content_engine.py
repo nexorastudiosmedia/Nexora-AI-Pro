@@ -24,26 +24,21 @@ def generate_reel_content(trend_title: str) -> dict:
     client = Groq(api_key=os.getenv("GROQ_API_KEY"))
 
     prompt = f"""You write ultra-short philosophical reel scripts for a Facebook
-Reels page called "Nexora Reflections". Your #1 job is to stop the scroll in
-the first 1 second, because Reels live or die on the hook.
+Reels page called "Nexora Reflections".
 
-Trending topic for loose inspiration (do not mention it literally): "{trend_title}"
+Trending topic for loose inspiration (do not mention it literally):
+"{trend_title}"
 
-Write ONE piece of short-form philosophical content for an 18-second video,
-told in THREE beats that build on each other.
+Write ONE piece of short-form philosophical content for an 18-second video.
 
 Rules:
-- hook: max 8 words, MUST be a curiosity-gap, a bold/mildly controversial claim,
-  or a direct "you" statement — never a generic proverb opener. This line alone
-  decides if someone keeps watching. No hashtags, no emojis.
-- line2: max 12 words, REQUIRED (never empty), develops the hook into a fuller thought
-- line3: max 12 words, REQUIRED (never empty), a closing reflection or gentle challenge
-  — the "punch" that ends the video
-- caption: 2-3 sentences for the Facebook caption below the video. The LAST sentence
-  MUST be a direct engagement question or prompt, followed by 3-5 relevant hashtags.
-- Must feel written for video pacing (three distinct short beats, not one long sentence
-  split up)
-- Avoid overused/common quotes
+- hook: max 8 words. Must create curiosity or make a bold claim.
+- line2: max 12 words. Develop the hook.
+- line3: max 12 words. End with a reflection or gentle challenge.
+- caption: 2-3 sentences. End with an engagement question or prompt.
+- No emojis.
+- Avoid overused quotes.
+- Make the three beats distinct and punchy.
 
 Return ONLY valid JSON with exactly these keys:
 {{
@@ -54,27 +49,43 @@ Return ONLY valid JSON with exactly these keys:
 }}
 """
 
-response = client.chat.completions.create(
-    model=GROQ_MODEL,
-    messages=[{"role": "user", "content": prompt}],
-    temperature=0.7,
-    max_tokens=350,
-    include_reasoning=False,
-) 
+    response = client.chat.completions.create(
+        model=GROQ_MODEL,
+        messages=[
+            {
+                "role": "system",
+                "content": "Return only valid JSON. No markdown or explanation."
+            },
+            {
+                "role": "user",
+                "content": prompt
+            }
+        ],
+        temperature=0.7,
+        max_tokens=350,
+        include_reasoning=False,
+    )
 
-    raw = response.choices[0].message.content.strip()
+    raw = response.choices[0].message.content
+
+    if not raw:
+        raise ValueError("Groq returned an empty content response.")
+
+    raw = raw.strip()
     raw = raw.replace("```json", "").replace("```", "").strip()
 
     data = json.loads(raw)
 
-    # Safety fallbacks in case the model skips a field
     data.setdefault("hook", "Maybe you are thinking about this wrong.")
     data.setdefault("line2", "There is more beneath the surface.")
     data.setdefault("line3", "Sit with that for a moment.")
-    data.setdefault("caption", "Sometimes the obvious answer hides a deeper truth. What do you think? #philosophy #mindset #reflection")
+    data.setdefault(
+        "caption",
+        "Sometimes the obvious answer hides a deeper truth. "
+        "What do you think? #philosophy #mindset #reflection"
+    )
 
     return data
-
 
 if __name__ == "__main__":
     from dotenv import load_dotenv
