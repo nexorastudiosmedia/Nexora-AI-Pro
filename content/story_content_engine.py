@@ -1,22 +1,16 @@
-````python
 """
 Story Content Engine
 --------------------
-Generates a short philosophical story line for
-the Nexora Reflections Facebook Story pipeline.
+Generates short-form philosophical story content
+for the Nexora Reflections Facebook Story pipeline.
 
-IMPORTANT:
-The caller in run_story_pipeline.py expects:
-
+The story pipeline expects:
     content["line"]
 
 Therefore this module returns:
-
     {
         "line": "..."
     }
-
-Do not change the return key unless the caller is also changed.
 """
 
 import os
@@ -24,10 +18,6 @@ import re
 
 from groq import Groq
 
-
-# ============================================================
-# CONFIGURATION
-# ============================================================
 
 GROQ_MODEL = os.getenv(
     "GROQ_MODEL",
@@ -37,14 +27,8 @@ GROQ_MODEL = os.getenv(
 MAX_LINE_WORDS = 70
 
 
-# ============================================================
-# API KEY
-# ============================================================
-
 def _get_groq_api_key() -> str:
-    """
-    Read the Groq API key from the environment.
-    """
+    """Get the Groq API key from the environment."""
 
     api_key = os.getenv("GROQ_API_KEY")
 
@@ -65,17 +49,11 @@ def _get_groq_api_key() -> str:
     return api_key
 
 
-# ============================================================
-# WORD LIMIT
-# ============================================================
-
 def _limit_words(
     text: str,
     maximum: int = MAX_LINE_WORDS,
 ) -> str:
-    """
-    Limit generated text to the maximum number of words.
-    """
+    """Limit text to the specified maximum number of words."""
 
     text = str(text).strip()
 
@@ -87,21 +65,14 @@ def _limit_words(
     return " ".join(words[:maximum]).strip()
 
 
-# ============================================================
-# CLEAN RESPONSE
-# ============================================================
-
 def _clean_line(text: str) -> str:
-    """
-    Clean common formatting produced by the model.
-    """
+    """Clean common formatting from the model response."""
 
     if not text:
         return ""
 
     text = str(text).strip()
 
-    # Remove markdown code fences if present.
     text = re.sub(
         r"^```(?:text|txt)?\s*",
         "",
@@ -117,7 +88,6 @@ def _clean_line(text: str) -> str:
 
     text = text.strip()
 
-    # Remove common labels if the model added one.
     prefixes = [
         "LINE:",
         "Line:",
@@ -135,32 +105,20 @@ def _clean_line(text: str) -> str:
     return text
 
 
-# ============================================================
-# GROQ GENERATION
-# ============================================================
-
 def _generate_line(
     client: Groq,
     trend_title: str,
 ) -> str:
-    """
-    Generate one short philosophical story line.
-
-    The model is deliberately asked for plain text rather
-    than JSON because the pipeline only needs one string:
-    content["line"].
-    """
+    """Generate one short philosophical story line."""
 
     prompt = f"""
-Create ONE original short philosophical Facebook story line.
+Create ONE original short philosophical Facebook story.
 
 Facebook page:
 "Nexora Reflections"
 
 Trending topic for loose inspiration:
 "{trend_title}"
-
-IMPORTANT:
 
 Use the trending topic only as loose inspiration.
 
@@ -174,31 +132,28 @@ politicians, celebrities, or real-world events.
 Transform the underlying idea into a universal
 human lesson or reflection.
 
-The line must be:
+Requirements:
 
-- Emotional
-- Thoughtful
-- Relatable
-- Original
-- Easy to understand
-- Suitable for a US Facebook audience
-- Suitable for a short vertical story video
-- Maximum 70 words
-
-Do not use hashtags.
-
-Do not use a title.
-
-Do not use labels.
-
-Do not use quotation marks around the entire response.
+- Maximum 70 words.
+- Emotional.
+- Thoughtful.
+- Relatable.
+- Original.
+- Easy to understand.
+- Suitable for a US Facebook audience.
+- Suitable for a short vertical story video.
+- No hashtags.
+- No title.
+- No labels.
+- No famous quotes.
+- No copied text.
+- Do not invent facts about real people.
 
 Return ONLY the story text.
 """
 
     response = client.chat.completions.create(
         model=GROQ_MODEL,
-
         messages=[
             {
                 "role": "system",
@@ -214,17 +169,10 @@ Return ONLY the story text.
                 "content": prompt,
             },
         ],
-
         temperature=0.7,
-
         max_completion_tokens=500,
-
         reasoning_effort="low",
     )
-
-    # --------------------------------------------------------
-    # Validate response
-    # --------------------------------------------------------
 
     if response is None:
         raise ValueError(
@@ -266,9 +214,7 @@ Return ONLY the story text.
             "Groq returned empty story content."
         )
 
-    line = _clean_line(
-        content
-    )
+    line = _clean_line(content)
 
     if not line:
         raise ValueError(
@@ -284,21 +230,16 @@ Return ONLY the story text.
     return line
 
 
-# ============================================================
-# PUBLIC FUNCTION
-# ============================================================
-
 def generate_story_content(
     trend_title: str,
 ) -> dict:
     """
-    Generate the story content expected by
-    run_story_pipeline.py.
+    Generate story content expected by run_story_pipeline.py.
 
-    IMPORTANT:
-    The pipeline expects content["line"].
+    The pipeline expects:
+        content["line"]
 
-    Returns:
+    Therefore this function returns:
         {
             "line": str
         }
@@ -307,47 +248,28 @@ def generate_story_content(
     api_key = _get_groq_api_key()
 
     client = Groq(
-        api_key=api_key
+        api_key=api_key,
     )
 
     try:
-
         line = _generate_line(
             client,
             trend_title,
         )
 
     except Exception as exc:
-
         raise ValueError(
             "Groq story line generation failed. "
             f"Model: {GROQ_MODEL}. "
             f"Error: {exc}"
         ) from exc
 
-    # ========================================================
-    # THIS IS THE CRITICAL CONTRACT
-    #
-    # run_story_pipeline.py does:
-    #
-    # content["line"]
-    #
-    # and then:
-    #
-    # create_story_video(content["line"])
-    # ========================================================
-
     return {
-        "line": line
+        "line": line,
     }
 
 
-# ============================================================
-# LOCAL TEST
-# ============================================================
-
 if __name__ == "__main__":
-
     from dotenv import load_dotenv
 
     load_dotenv()
@@ -358,4 +280,3 @@ if __name__ == "__main__":
 
     print("Generated story line:")
     print(result["line"])
-````
