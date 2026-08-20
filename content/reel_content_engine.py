@@ -43,13 +43,13 @@ MUST be a direct engagement question or prompt (e.g. "Do you agree, or nah?", \
 "Tag someone who needs this."), followed by 3-5 relevant hashtags.
 - Must feel written for video pacing (three distinct short beats, not one long sentence split up)
 - Avoid overused/common quotes
-
-Return ONLY valid JSON, no markdown, no preamble, in this exact shape:
-{{"hook": "...", "line2": "...", "line3": "...", "caption": "..."}}
-"""
-
-response = client.chat.completions.create(
-    model=GROQ_MODEL,
+    response = client.chat.completions.create(
+        model=GROQ_MODEL,
+        messages=[{"role": "user", "content": prompt}],
+        temperature=0.9,
+        max_tokens=350,
+        response_format={"type": "json_object"},
+    )
     messages=[{"role": "user", "content": prompt}],
     temperature=0.9,
     max_tokens=350,
