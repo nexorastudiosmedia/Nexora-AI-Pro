@@ -4,8 +4,8 @@ Story Content Engine
 Generates short-form philosophical story content
 for the Nexora Reflections Facebook page.
 
-Groq-powered generation with robust JSON handling,
-validation, and retry support.
+Uses Groq GPT-OSS with strict Structured Outputs
+for reliable JSON generation.
 """
 
 import json
@@ -29,101 +29,117 @@ MAX_RETRIES = 3
 
 
 # ============================================================
+# JSON SCHEMA
+# ============================================================
+
+STORY_JSON_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "title": {
+            "type": "string"
+        },
+        "story": {
+            "type": "string"
+        },
+        "caption": {
+            "type": "string"
+        }
+    },
+    "required": [
+        "title",
+        "story",
+        "caption"
+    ],
+    "additionalProperties": False
+}
+
+
+# ============================================================
 # HELPERS
 # ============================================================
 
 def _get_groq_api_key() -> str:
-    """Return the Groq API key or raise a clear error."""
+    """
+    Get GROQ_API_KEY from environment variables.
+    """
 
     api_key = os.getenv("GROQ_API_KEY")
 
-    if not api_key:
+    if api_key is None:
         raise ValueError(
             "GROQ_API_KEY environment variable is missing. "
-            "Add GROQ_API_KEY to GitHub Actions Secrets."
+            "Please check GitHub Actions Secrets."
         )
 
     api_key = api_key.strip()
 
     if not api_key:
         raise ValueError(
-            "GROQ_API_KEY is empty. "
-            "Check the GitHub Actions secret value."
+            "GROQ_API_KEY environment variable is empty. "
+            "Please check the GitHub Actions secret."
         )
 
     return api_key
 
 
-def _clean_json_response(raw: str) -> str:
-    """
-    Clean common markdown/code-fence artifacts from
-    an otherwise JSON response.
-    """
-
-    if not raw:
-        return ""
-
-    raw = raw.strip()
-
-    # Remove markdown code fences.
-    if raw.startswith("```json"):
-        raw = raw[len("```json"):].strip()
-
-    elif raw.startswith("```JSON"):
-        raw = raw[len("```JSON"):].strip()
-
-    elif raw.startswith("```"):
-        raw = raw[len("```"):].strip()
-
-    if raw.endswith("```"):
-        raw = raw[:-3].strip()
-
-    # Sometimes a model may place text before/after JSON.
-    # Try to isolate the outermost JSON object.
-    first_brace = raw.find("{")
-    last_brace = raw.rfind("}")
-
-    if first_brace != -1 and last_brace != -1:
-        raw = raw[first_brace:last_brace + 1]
-
-    return raw.strip()
-
-
 def _limit_words(text: str, maximum: int) -> str:
-    """Limit text to a maximum number of whitespace-separated words."""
+    """
+    Limit text to a maximum number of words.
+    """
+
+    text = str(text).strip()
 
     words = text.split()
 
     if len(words) <= maximum:
-        return text.strip()
+        return text
 
     return " ".join(words[:maximum]).strip()
 
 
-def _validate_and_normalize(data: dict) -> dict:
+def _normalize_story(data: dict) -> dict:
     """
-    Validate the generated object and normalize the
-    title/story/caption fields.
+    Validate and normalize the generated story object.
     """
 
     if not isinstance(data, dict):
         raise ValueError(
-            "Groq returned JSON, but it was not a JSON object."
+            "Groq returned JSON, but the result was not an object."
         )
 
-    title = str(data.get("title", "")).strip()
-    story = str(data.get("story", "")).strip()
-    caption = str(data.get("caption", "")).strip()
+    title = str(
+        data.get("title", "")
+    ).strip()
 
-    # Safe defaults.
+    story = str(
+        data.get("story", "")
+    ).strip()
+
+    caption = str(
+        data.get("caption", "")
+    ).strip()
+
+    # --------------------------------------------------------
+    # Fallback title
+    # --------------------------------------------------------
+
     if not title:
         title = "The Lesson We Almost Miss"
+
+    # --------------------------------------------------------
+    # Fallback story
+    # --------------------------------------------------------
 
     if not story:
         story = (
             "Sometimes we rush toward the next moment "
-            "without noticing what the present is trying to teach us."
+            "without noticing what the present is trying "
+            "to teach us."
         )
+
+    # --------------------------------------------------------
+    # Fallback caption
+    # --------------------------------------------------------
 
     if not caption:
         caption = (
@@ -132,21 +148,24 @@ def _validate_and_normalize(data: dict) -> dict:
             "#philosophy #mindset #reflection"
         )
 
-    # Enforce the story limit ourselves.
+    # --------------------------------------------------------
+    # Enforce 70-word story limit
+    # --------------------------------------------------------
+
     story = _limit_words(
         story,
-        MAX_STORY_WORDS,
+        MAX_STORY_WORDS
     )
 
     return {
         "title": title,
         "story": story,
-        "caption": caption,
+        "caption": caption
     }
 
 
 # ============================================================
-# MAIN GENERATOR
+# MAIN STORY GENERATOR
 # ============================================================
 
 def generate_story_content(trend_title: str) -> dict:
@@ -164,31 +183,42 @@ def generate_story_content(trend_title: str) -> dict:
     api_key = _get_groq_api_key()
 
     client = Groq(
-        api_key=api_key,
+        api_key=api_key
     )
 
     prompt = f"""
 Create ONE original short philosophical Facebook story.
 
 Facebook page:
-"Nexora Reflections"
+Nexora Reflections
 
 Trending topic for loose inspiration:
-"{trend_title}"
-
-Do not directly report the news.
-
-Do not mention the trending topic literally.
-
-Use the topic only as loose inspiration for
-a universal human lesson or reflection.
-
-The final story must feel timeless and relatable.
+{trend_title}
 
 IMPORTANT:
-Keep the entire response concise.
+The trending topic is ONLY inspiration.
 
-STORY:
+Do NOT report the news.
+
+Do NOT mention the trending topic directly.
+
+Do NOT mention SpaceX, companies, products, politicians,
+celebrities, or specific real-world events unless absolutely
+necessary.
+
+Transform the general idea into a universal human lesson.
+
+The final content should feel timeless, emotional,
+thoughtful, relatable, and suitable for a US Facebook audience.
+
+TITLE REQUIREMENTS:
+- Short.
+- Curiosity-driven.
+- No hashtags.
+- No quotation marks.
+- Maximum 10 words.
+
+STORY REQUIREMENTS:
 - Maximum 70 words.
 - Emotional.
 - Thoughtful.
@@ -196,185 +226,220 @@ STORY:
 - Original wording.
 - Easy to read on Facebook.
 - No famous quotes.
+- No copied material.
 - Do not invent specific facts about real people.
-- Do not claim fictional events are real.
+- Do not present fictional events as real news.
 
-TITLE:
-- Short.
-- Curiosity-driven.
-- No hashtags.
+CAPTION REQUIREMENTS:
+- Two short sentences.
+- The second sentence MUST be an engagement question.
+- After the two sentences, add exactly 3 relevant hashtags.
+- Keep the caption concise.
 
-CAPTION:
-- Exactly 2 short sentences before hashtags.
-- The second sentence must be an engagement question.
-- Then add exactly 3 relevant hashtags.
-
-Return ONLY a JSON object.
-
-The JSON must contain exactly these fields:
-
-{{
-  "title": "short title",
-  "story": "maximum 70 word story",
-  "caption": "two short sentences followed by three hashtags"
-}}
+Generate only the three requested fields.
+Do not generate explanations.
+Do not generate commentary.
 """
 
-    last_error = None
 
     # ========================================================
     # RETRY LOOP
     # ========================================================
 
-    for attempt in range(1, MAX_RETRIES + 1):
+    last_error = None
+
+    for attempt in range(
+        1,
+        MAX_RETRIES + 1
+    ):
 
         try:
 
             response = client.chat.completions.create(
+
+                # ------------------------------------------------
+                # Groq model
+                # ------------------------------------------------
+
                 model=GROQ_MODEL,
+
+                # ------------------------------------------------
+                # Messages
+                # ------------------------------------------------
+
                 messages=[
                     {
                         "role": "system",
                         "content": (
                             "You are a professional short-form "
-                            "Facebook writer. "
-                            "Return only valid JSON. "
-                            "Keep the output concise."
-                        ),
+                            "Facebook writer for Nexora Reflections. "
+                            "Generate concise philosophical stories. "
+                            "Follow the requested output schema exactly."
+                        )
                     },
                     {
                         "role": "user",
-                        "content": prompt,
-                    },
+                        "content": prompt
+                    }
                 ],
+
+                # ------------------------------------------------
+                # Generation settings
+                # ------------------------------------------------
+
                 temperature=0.7,
+
                 max_completion_tokens=500,
+
+                # ------------------------------------------------
+                # STRICT STRUCTURED OUTPUT
+                #
+                # GPT-OSS 120B supports strict JSON schema mode.
+                # ------------------------------------------------
+
                 response_format={
-                    "type": "json_object"
+                    "type": "json_schema",
+                    "json_schema": {
+                        "name": "nexora_reflection_story",
+                        "strict": True,
+                        "schema": STORY_JSON_SCHEMA
+                    }
                 },
-                include_reasoning=False,
+
+                # ------------------------------------------------
+                # Disable reasoning output.
+                # ------------------------------------------------
+
+                include_reasoning=False
             )
 
-            # ------------------------------------------------
-            # Validate response structure
-            # ------------------------------------------------
 
-            if not response:
+            # ====================================================
+            # RESPONSE VALIDATION
+            # ====================================================
+
+            if response is None:
                 raise ValueError(
                     "Groq returned no response object."
                 )
 
-            if not getattr(response, "choices", None):
+            choices = getattr(
+                response,
+                "choices",
+                None
+            )
+
+            if not choices:
                 raise ValueError(
-                    "Groq returned a response without choices."
+                    "Groq returned no choices."
                 )
 
-            choice = response.choices[0]
+            choice = choices[0]
 
-            if not getattr(choice, "message", None):
+            message = getattr(
+                choice,
+                "message",
+                None
+            )
+
+            if message is None:
                 raise ValueError(
                     "Groq returned a choice without a message."
                 )
 
-            message = choice.message
+            content = getattr(
+                message,
+                "content",
+                None
+            )
 
-            raw = getattr(message, "content", None)
+            if content is None:
+                content = ""
 
-            # ------------------------------------------------
-            # IMPORTANT:
-            # GPT-OSS may expose reasoning separately.
-            # We only want final content.
-            # ------------------------------------------------
+            content = str(content).strip()
 
-            if raw is None:
-                raw = ""
 
-            raw = str(raw).strip()
+            # ====================================================
+            # EMPTY CONTENT CHECK
+            # ====================================================
 
-            # ------------------------------------------------
-            # Empty response diagnostics
-            # ------------------------------------------------
-
-            if not raw:
-
-                reasoning = getattr(
-                    message,
-                    "reasoning",
-                    None,
-                )
+            if not content:
 
                 finish_reason = getattr(
                     choice,
                     "finish_reason",
-                    None,
+                    None
                 )
 
-                usage = getattr(
-                    response,
-                    "usage",
-                    None,
+                reasoning = getattr(
+                    message,
+                    "reasoning",
+                    None
                 )
 
-                diagnostics = (
-                    f"Groq returned empty final content. "
+                raise ValueError(
+                    "Groq returned empty final content. "
                     f"model={GROQ_MODEL}, "
                     f"attempt={attempt}, "
                     f"finish_reason={finish_reason}, "
-                    f"reasoning_present={bool(reasoning)}, "
-                    f"usage={usage}"
+                    f"reasoning_present={bool(reasoning)}"
                 )
 
-                raise ValueError(diagnostics)
 
-            # ------------------------------------------------
-            # Clean JSON
-            # ------------------------------------------------
-
-            raw = _clean_json_response(raw)
-
-            if not raw:
-                raise ValueError(
-                    "Groq returned empty content after JSON cleanup."
-                )
-
-            # ------------------------------------------------
-            # Parse JSON
-            # ------------------------------------------------
+            # ====================================================
+            # PARSE STRUCTURED JSON
+            # ====================================================
 
             try:
 
-                data = json.loads(raw)
+                data = json.loads(
+                    content
+                )
 
             except json.JSONDecodeError as exc:
 
                 raise ValueError(
-                    "Groq returned invalid JSON. "
-                    f"Raw response: {raw[:1000]}"
+                    "Groq returned content that could not "
+                    f"be parsed as JSON: {content[:1000]}"
                 ) from exc
 
-            # ------------------------------------------------
-            # Validate and normalize
-            # ------------------------------------------------
 
-            result = _validate_and_normalize(data)
+            # ====================================================
+            # NORMALIZE RESULT
+            # ====================================================
+
+            result = _normalize_story(
+                data
+            )
+
+
+            # ====================================================
+            # SUCCESS
+            # ====================================================
 
             return result
+
 
         except Exception as exc:
 
             last_error = exc
 
-            # Do not immediately fail.
-            # Retry transient/model-response issues.
+            # ----------------------------------------------------
+            # Retry
+            # ----------------------------------------------------
+
             if attempt < MAX_RETRIES:
 
                 time.sleep(
-                    2 * attempt
+                    attempt * 2
                 )
 
                 continue
 
-            # Final attempt failed.
+            # ----------------------------------------------------
+            # Final failure
+            # ----------------------------------------------------
+
             raise ValueError(
                 "Groq story generation failed after "
                 f"{MAX_RETRIES} attempts. "
@@ -393,14 +458,14 @@ if __name__ == "__main__":
 
     load_dotenv()
 
-    sample = generate_story_content(
+    result = generate_story_content(
         "the pace of modern life"
     )
 
     print(
         json.dumps(
-            sample,
+            result,
             indent=2,
-            ensure_ascii=False,
+            ensure_ascii=False
         )
     )
