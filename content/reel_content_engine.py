@@ -57,13 +57,13 @@ Return ONLY valid JSON with exactly these keys:
     response = client.chat.completions.create(
         model=GROQ_MODEL,
         messages=[
+            {"role": "system", "content": "Return only valid JSON. No markdown, no code fences, no explanation."},
             {"role": "user", "content": prompt}
         ],
-        temperature=0.9,
+        temperature=0.7,
         max_tokens=350,
-        response_format={"type": "json_object"},
     )
-
+    
     raw = response.choices[0].message.content.strip()
     raw = raw.replace("```json", "").replace("```", "").strip()
 
