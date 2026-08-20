@@ -6,7 +6,7 @@ so it can be re-used or swapped independently.
 import os
 from groq import Groq
 
-GROQ_MODEL = os.getenv("GROQ_MODEL", "llama-3.1-8b-instant")
+GROQ_MODEL = os.getenv("GROQ_MODEL", "openai/gpt-oss-20b")
 VALID_MOODS = ["calm", "hopeful", "melancholic", "intense"]
 
 
